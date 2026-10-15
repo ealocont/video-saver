@@ -39,7 +39,7 @@ jobs:
           npm_config_legacy_peer_deps: "true"
         run: |
           set -o pipefail
-          (npm install && npx expo install expo-share-intent expo-media-library expo-file-system @react-native-async-storage/async-storage) 2>&1 | tee ../install.log || { echo "::error::$(tail -n 25 ../install.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
+          (npm install && npx expo install expo-share-intent expo-media-library expo-file-system @react-native-async-storage/async-storage react-native-google-mobile-ads) 2>&1 | tee ../install.log || { echo "::error::$(tail -n 25 ../install.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
 
       - name: Generate the Android project
         working-directory: build

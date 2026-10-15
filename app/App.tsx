@@ -15,7 +15,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library/legacy";
 import { useShareIntent } from "expo-share-intent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_KEY as DEFAULT_KEY, SERVER_URL as DEFAULT_URL } from "./src/config";
+import mobileAds, { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads";
+import { API_KEY as DEFAULT_KEY, BANNER_AD_UNIT_ID, SERVER_URL as DEFAULT_URL } from "./src/config";
 
 const STORE_URL = "vs_server_url";
 const STORE_KEY = "vs_api_key";
@@ -41,6 +42,10 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+
+  useEffect(() => {
+    mobileAds().initialize().catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadConfig().then((c) => {
@@ -224,6 +229,10 @@ export default function App() {
           </View>
         )}
       </View>
+
+      <View style={s.adBox}>
+        <BannerAd unitId={BANNER_AD_UNIT_ID || TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -259,5 +268,6 @@ const s = StyleSheet.create({
   err: { color: "#b91c1c" },
   thumb: { width: "100%", height: 180, borderRadius: 10, backgroundColor: "#e5e7eb" },
   metaTitle: { fontSize: 14, textAlign: "right", color: "#333" },
+  adBox: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
   link: { color: "#2563eb", fontSize: 14, textAlign: "right" },
 });
