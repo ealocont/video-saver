@@ -51,7 +51,7 @@ jobs:
         working-directory: build/android
         run: |
           set -o pipefail
-          ./gradlew assembleRelease --no-daemon 2>&1 | tee ../gradle.log || { echo "::error::$(grep -E -i -m 15 'error|failed|what went wrong' ../gradle.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee ../gradle.log || { echo "::error::$(grep -A 12 -m 3 'What went wrong' ../gradle.log | grep -v -E '^\s*$|SKIPPED' | tr '\n' '|' | cut -c1-1800)"; exit 1; }
 
       - name: Publish the APK as a release
         env:
