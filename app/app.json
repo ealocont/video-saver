@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "محمّل الفيديو",
+    "slug": "video-saver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.example.videosaver",
+      "usesCleartextTraffic": true
+    },
+    "plugins": [
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["text/*"]
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "يحتاج التطبيق إذن حفظ الفيديوهات في المعرض.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
+    ]
+  }
+}

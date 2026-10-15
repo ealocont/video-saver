@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", ".github/workflows/build-apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Create a fresh Expo project and apply our files
+        run: |
+          npx --yes create-expo-app@latest build --template blank-typescript --no-install
+          cp app/App.tsx build/App.tsx
+          cp app/app.json build/app.json
+          mkdir -p build/src
+          cp app/src/config.ts build/src/config.ts
+
+      - name: Install dependencies
+        working-directory: build
+        run: |
+          npm install
+          npx expo install expo-share-intent expo-media-library expo-file-system @react-native-async-storage/async-storage
+
+      - name: Generate the Android project
+        working-directory: build
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build the APK
+        working-directory: build/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Publish the APK as a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/android/app/build/outputs/apk/release/app-release.apk video-saver.apk
+          gh release create "apk-${{ github.run_number }}" video-saver.apk \
+            --title "APK #${{ github.run_number }}" \
+            --notes "Android APK built from commit ${{ github.sha }}. Install it, open ⚙️ Settings and enter your server address and API key."
