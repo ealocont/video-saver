@@ -34,6 +34,7 @@ jobs:
           cp app/app.json build/app.json
           mkdir -p build/src
           cp app/src/config.ts build/src/config.ts
+          mkdir -p build/assets && cp app/assets/*.png build/assets/
           # Optional: bake the API key into the app from the GitHub secret API_KEY
           python3 - <<'PY'
           import os, re
