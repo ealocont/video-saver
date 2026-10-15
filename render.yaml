@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: video-saver
+    runtime: docker
+    plan: free
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    healthCheckPath: /health
+    envVars:
+      - key: API_KEY
+        generateValue: true   # Render creates a random key; read it in Environment tab
+      - key: MAX_DURATION_SEC
+        value: "3600"
+      - key: MAX_FILESIZE_MB
+        value: "500"
