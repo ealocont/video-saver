@@ -26,12 +26,24 @@ jobs:
           java-version: 17
 
       - name: Create a fresh Expo project and apply our files
+        env:
+          APP_API_KEY: ${{ secrets.API_KEY }}
         run: |
           npx --yes create-expo-app@latest build --template blank-typescript@sdk-57 --no-install
           cp app/App.tsx build/App.tsx
           cp app/app.json build/app.json
           mkdir -p build/src
           cp app/src/config.ts build/src/config.ts
+          # Optional: bake the API key into the app from the GitHub secret API_KEY
+          python3 - <<'PY'
+          import os, re
+          key = os.environ.get("APP_API_KEY", "")
+          if key:
+              p = "build/src/config.ts"
+              s = open(p, encoding="utf-8").read()
+              s = s.replace('export const API_KEY = "";', 'export const API_KEY = ' + repr(key).replace("'", '"') + ';')
+              open(p, "w", encoding="utf-8").write(s)
+          PY
 
       - name: Install dependencies
         working-directory: build

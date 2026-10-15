@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -26,6 +28,9 @@ async function loadConfig() {
   return { url: (url ?? DEFAULT_URL).trim().replace(/\/+$/, ""), key: (key ?? DEFAULT_KEY).trim() };
 }
 
+const STORE_RECENT = "vs_recent";
+type Item = { id: string; title?: string; thumbnail?: string; at: number };
+
 type Status = "idle" | "loading" | "downloading" | "done" | "error";
 type Meta = { title?: string; thumbnail?: string; uploader?: string };
 
@@ -42,6 +47,34 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [items, setItems] = useState<Item[]>([]);
+  const taps = useRef({ n: 0, t: 0 });
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORE_RECENT)
+      .then((v) => v && setItems(JSON.parse(v)))
+      .catch(() => {});
+  }, []);
+
+  // Hidden developer menu: tap the title 7 times quickly.
+  function onTitleTap() {
+    const now = Date.now();
+    taps.current.n = now - taps.current.t > 1500 ? 1 : taps.current.n + 1;
+    taps.current.t = now;
+    if (taps.current.n >= 7) {
+      taps.current.n = 0;
+      setShowSettings((v) => !v);
+    }
+  }
+
+  async function openItem(item: Item) {
+    try {
+      await Linking.openURL(`content://media/external/video/media/${item.id}`);
+    } catch {
+      setStatus("error");
+      setMessage("تعذّر فتح الفيديو. ربما حُذف من المعرض.");
+    }
+  }
 
   useEffect(() => {
     mobileAds().initialize().catch(() => {});
@@ -89,7 +122,7 @@ export default function App() {
     try {
       const { url: SERVER_URL, key: API_KEY } = await loadConfig();
       if (!SERVER_URL || SERVER_URL.includes("YOUR-SERVER")) {
-        throw new Error("اضبط عنوان الخادم أولًا من الإعدادات ⚙️");
+        throw new Error("التطبيق غير مهيأ بعد. تواصل مع المطوّر.");
       }
 
       // 1) ask for permission to save into the gallery
@@ -105,7 +138,8 @@ export default function App() {
         body: JSON.stringify({ url: link }),
       });
       if (!infoRes.ok) throw new Error(await errorText(infoRes));
-      setMeta(await infoRes.json());
+      const info: Meta = await infoRes.json();
+      setMeta(info);
 
       // 3) download the file from the server into app storage
       setStatus("downloading");
@@ -135,8 +169,12 @@ export default function App() {
       }
 
       // 4) save into the phone gallery, then clean the temp file
-      await MediaLibrary.saveToLibraryAsync(result.uri);
+      const asset = await MediaLibrary.createAssetAsync(result.uri);
       await FileSystem.deleteAsync(result.uri, { idempotent: true });
+
+      const next = [{ id: asset.id, title: info.title, thumbnail: info.thumbnail, at: Date.now() }, ...items].slice(0, 20);
+      setItems(next);
+      AsyncStorage.setItem(STORE_RECENT, JSON.stringify(next)).catch(() => {});
 
       setStatus("done");
       setMessage("تم حفظ الفيديو في المعرض ✅");
@@ -152,8 +190,11 @@ export default function App() {
   return (
     <SafeAreaView style={s.root}>
       <StatusBar barStyle="dark-content" />
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
       <View style={s.card}>
-        <Text style={s.title}>محمّل الفيديو</Text>
+        <Pressable onPress={onTitleTap}>
+          <Text style={s.title}>محمّل الفيديو</Text>
+        </Pressable>
         <Text style={s.hint}>
           شارك رابط الفيديو إلى هذا التطبيق من فيسبوك أو تيك توك أو إنستغرام، أو ألصقه هنا.
         </Text>
@@ -197,10 +238,6 @@ export default function App() {
           </Text>
         ) : null}
 
-        <Pressable onPress={() => setShowSettings((v) => !v)}>
-          <Text style={s.link}>⚙️ الإعدادات</Text>
-        </Pressable>
-
         {showSettings && (
           <View style={{ gap: 8 }}>
             <TextInput
@@ -230,6 +267,22 @@ export default function App() {
         )}
       </View>
 
+      {items.length > 0 && (
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>تنزيلاتي</Text>
+          {items.map((it) => (
+            <Pressable key={it.id + it.at} style={s.item} onPress={() => openItem(it)}>
+              {it.thumbnail ? <Image source={{ uri: it.thumbnail }} style={s.itemThumb} /> : <View style={s.itemThumb} />}
+              <Text style={s.itemTitle} numberOfLines={2}>
+                {it.title || "فيديو"}
+              </Text>
+              <Text style={s.open}>▶ فتح</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+      </ScrollView>
+
       <View style={s.adBox}>
         <BannerAd unitId={BANNER_AD_UNIT_ID || TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} />
       </View>
@@ -247,7 +300,8 @@ async function errorText(res: Response) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#f3f4f6", justifyContent: "center", padding: 16 },
+  root: { flex: 1, backgroundColor: "#f3f4f6" },
+  scroll: { padding: 16, paddingBottom: 90, gap: 16, flexGrow: 1, justifyContent: "center" },
   card: { backgroundColor: "#fff", borderRadius: 16, padding: 20, gap: 12 },
   title: { fontSize: 24, fontWeight: "700", textAlign: "right" },
   hint: { fontSize: 14, color: "#555", textAlign: "right", lineHeight: 22 },
@@ -269,5 +323,9 @@ const s = StyleSheet.create({
   thumb: { width: "100%", height: 180, borderRadius: 10, backgroundColor: "#e5e7eb" },
   metaTitle: { fontSize: 14, textAlign: "right", color: "#333" },
   adBox: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
-  link: { color: "#2563eb", fontSize: 14, textAlign: "right" },
+  sectionTitle: { fontSize: 18, fontWeight: "700", textAlign: "right" },
+  item: { flexDirection: I18nManager.isRTL ? "row-reverse" : "row", alignItems: "center", gap: 10 },
+  itemThumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: "#e5e7eb" },
+  itemTitle: { flex: 1, fontSize: 14, textAlign: "right", color: "#333" },
+  open: { color: "#2563eb", fontSize: 14, fontWeight: "600" },
 });

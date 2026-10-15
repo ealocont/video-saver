@@ -1,10 +1,10 @@
-// Defaults only. Normally leave these as they are and enter the real server
-// address and API key inside the app (⚙️ Settings), so no secret ever sits in
-// the source code or in a public APK.
-export const SERVER_URL = "https://YOUR-SERVER-ADDRESS";
+// The server address is not secret, so it is the built-in default.
+export const SERVER_URL = "https://video-saver-572v.onrender.com";
+
+// Injected at build time from the GitHub secret API_KEY (see build workflow).
+// Never commit the real key here.
 export const API_KEY = "";
 
-// Google AdMob banner ad unit id (looks like ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY).
-// Leave empty to show Google's TEST ads. Replace with your real unit after creating
-// the app in AdMob. Also set the real app id in app.json (react-native-google-mobile-ads plugin).
+// Google AdMob banner ad unit id (ca-app-pub-XXXXXXXXXXXXXXXX/YYYYYYYYYY).
+// Leave empty to show Google's TEST ads.
 export const BANNER_AD_UNIT_ID = "";
