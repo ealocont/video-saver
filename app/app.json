@@ -28,6 +28,7 @@
     ],
     "ios": {
       "bundleIdentifier": "com.example.videosaver"
-    }
+    },
+    "scheme": "videosaver"
   }
 }
