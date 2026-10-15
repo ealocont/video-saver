@@ -13,7 +13,9 @@
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": ["text/*"]
+          "androidIntentFilters": [
+            "text/*"
+          ]
         }
       ],
       [
@@ -23,6 +25,9 @@
           "isAccessMediaLocationEnabled": false
         }
       ]
-    ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.example.videosaver"
+    }
   }
 }
