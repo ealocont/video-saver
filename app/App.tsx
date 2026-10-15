@@ -12,7 +12,7 @@ import {
   I18nManager,
 } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
-import * as MediaLibrary from "expo-media-library";
+import * as MediaLibrary from "expo-media-library/legacy";
 import { useShareIntent } from "expo-share-intent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_KEY as DEFAULT_KEY, SERVER_URL as DEFAULT_URL } from "./src/config";
