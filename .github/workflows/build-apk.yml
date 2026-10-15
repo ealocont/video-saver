@@ -35,17 +35,23 @@ jobs:
 
       - name: Install dependencies
         working-directory: build
+        env:
+          npm_config_legacy_peer_deps: "true"
         run: |
-          npm install
-          npx expo install expo-share-intent expo-media-library expo-file-system @react-native-async-storage/async-storage
+          set -o pipefail
+          (npm install && npx expo install expo-share-intent expo-media-library expo-file-system @react-native-async-storage/async-storage) 2>&1 | tee ../install.log || { echo "::error::$(tail -n 25 ../install.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
 
       - name: Generate the Android project
         working-directory: build
-        run: npx expo prebuild --platform android --no-install
+        run: |
+          set -o pipefail
+          npx expo prebuild --platform android --no-install 2>&1 | tee ../prebuild.log || { echo "::error::$(tail -n 25 ../prebuild.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
 
       - name: Build the APK
         working-directory: build/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee ../gradle.log || { echo "::error::$(grep -E -i -m 15 'error|failed|what went wrong' ../gradle.log | tr '\n' '|' | cut -c1-1800)"; exit 1; }
 
       - name: Publish the APK as a release
         env:
