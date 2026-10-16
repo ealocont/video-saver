@@ -27,7 +27,10 @@
         "expo-media-library",
         {
           "savePhotosPermission": "يحتاج التطبيق إذن حفظ الفيديوهات في المعرض.",
-          "isAccessMediaLocationEnabled": false
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "video"
+          ]
         }
       ],
       [

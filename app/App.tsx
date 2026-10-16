@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Linking,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library/legacy";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { useShareIntent } from "expo-share-intent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import mobileAds, { BannerAd, BannerAdSize, TestIds } from "react-native-google-mobile-ads";
@@ -36,6 +38,25 @@ type Meta = { title?: string; thumbnail?: string; uploader?: string };
 
 const extractLink = (text: string) => text.match(/https?:\/\/[^\s]+/)?.[0]?.replace(/[).,;]+$/, "") ?? "";
 
+function Player({ uri, onClose, onExternal }: { uri: string; onClose: () => void; onExternal: () => void }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.play();
+  });
+  return (
+    <View style={s.playerRoot}>
+      <View style={s.playerBar}>
+        <Pressable onPress={onClose} hitSlop={12}>
+          <Text style={s.playerBtn}>✕ إغلاق</Text>
+        </Pressable>
+        <Pressable onPress={onExternal} hitSlop={12}>
+          <Text style={s.playerBtn}>فتح في المعرض</Text>
+        </Pressable>
+      </View>
+      <VideoView style={s.playerVideo} player={player} nativeControls allowsFullscreen allowsPictureInPicture contentFit="contain" />
+    </View>
+  );
+}
+
 export default function App() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const [input, setInput] = useState("");
@@ -49,6 +70,7 @@ export default function App() {
   const [apiKey, setApiKey] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const taps = useRef({ n: 0, t: 0 });
+  const [playing, setPlaying] = useState<{ uri: string; item: Item } | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(STORE_RECENT)
@@ -67,7 +89,7 @@ export default function App() {
     }
   }
 
-  async function openItem(item: Item) {
+  async function openExternal(item: Item) {
     try {
       await Linking.openURL(`content://media/external/video/media/${item.id}`);
     } catch {
@@ -76,8 +98,26 @@ export default function App() {
     }
   }
 
+  async function openItem(item: Item) {
+    try {
+      const perm = await MediaLibrary.requestPermissionsAsync(false, ["video"]);
+      if (perm.granted) {
+        const info = await MediaLibrary.getAssetInfoAsync(item.id);
+        if (info?.localUri) {
+          setPlaying({ uri: info.localUri, item });
+          return;
+        }
+      }
+    } catch {}
+    await openExternal(item);
+  }
+
   useEffect(() => {
     mobileAds().initialize().catch(() => {});
+    // Wake the (free-tier) server early so the first download is not delayed.
+    loadConfig()
+      .then((c) => c.url && !c.url.includes("YOUR-SERVER") && fetch(`${c.url}/health`).catch(() => {}))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -126,7 +166,7 @@ export default function App() {
       }
 
       // 1) ask for permission to save into the gallery
-      const perm = await MediaLibrary.requestPermissionsAsync(true);
+      const perm = await MediaLibrary.requestPermissionsAsync(false, ["video"]);
       if (!perm.granted) throw new Error("نحتاج إذن حفظ الفيديو في المعرض.");
 
       // 2) fetch title / thumbnail
@@ -283,6 +323,20 @@ export default function App() {
       )}
       </ScrollView>
 
+      <Modal visible={!!playing} animationType="slide" onRequestClose={() => setPlaying(null)}>
+        {playing && (
+          <Player
+            uri={playing.uri}
+            onClose={() => setPlaying(null)}
+            onExternal={() => {
+              const it = playing.item;
+              setPlaying(null);
+              openExternal(it);
+            }}
+          />
+        )}
+      </Modal>
+
       <View style={s.adBox}>
         <BannerAd unitId={BANNER_AD_UNIT_ID || TestIds.BANNER} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} />
       </View>
@@ -323,6 +377,10 @@ const s = StyleSheet.create({
   thumb: { width: "100%", height: 180, borderRadius: 10, backgroundColor: "#e5e7eb" },
   metaTitle: { fontSize: 14, textAlign: "right", color: "#333" },
   adBox: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
+  playerRoot: { flex: 1, backgroundColor: "#000" },
+  playerBar: { flexDirection: "row", justifyContent: "space-between", padding: 16, paddingTop: 40 },
+  playerBtn: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  playerVideo: { flex: 1 },
   sectionTitle: { fontSize: 18, fontWeight: "700", textAlign: "right" },
   item: { flexDirection: I18nManager.isRTL ? "row-reverse" : "row", alignItems: "center", gap: 10 },
   itemThumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: "#e5e7eb" },
